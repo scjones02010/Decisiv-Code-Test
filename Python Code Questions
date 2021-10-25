@@ -1,0 +1,44 @@
+import numpy as np
+import pandas as pd
+import requests
+import json
+from sqlalchemy import create_engine
+# Postgres username, password, and database name
+POSTGRES_ADDRESS = 'db.decisv.io' ## INSERT YOUR DB ADDRESS IF IT'S NOT ON PANOPLY
+POSTGRES_PORT = '5439'
+POSTGRES_USERNAME = 'test' ## CHANGE THIS TO YOUR PANOPLY/POSTGRES USERNAME
+POSTGRES_PASSWORD = '*****' ## CHANGE THIS TO YOUR PANOPLY/POSTGRES PASSWORD
+POSTGRES_DBNAME = 'vin_numbers'
+
+url = 'https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVinExtended/5UXWX7C5*BA?format=json'
+
+
+vin_df = pd.read_sql_query(‘’’Sselect a.vin as 'vin', #get vin number
+count(e.operation_name) as 'total_operations' #get total transaction operations
+sum(e.total_price) as 'total cost' #get total cost
+from assets as a inner JOIN #select first table
+estimate line items-operations as e on e.dim_asset_id=a.dim_asset_id #join tables
+where e.sold_staus='sold'’’’, con=cnx) #import the file into python
+
+vin_df.drop_duplicates(inplace=true) #drop any duplicates
+
+vin_df.to_csv('./vin_df_from_submission.csv') #create csv
+
+response = requests.get(url) #connect to url
+print(response.status_code) #check connection status
+
+for vin in list(vin_df['vin']): #loop through data field
+    vin_list=[] #create empty list
+    vin_info={}
+    post_fields = {'format': 'json', 'data':vin} #get data for vin number
+    r = requests.post(url, data=post_fields) #find the data for the vin post
+        vin_info['vin']=r.json()['vin'] #get vin number
+        vin_info['make']=r.json()['make'] #get make
+        vin_info['model']=r.json()['model'] #get model
+        vin_info['engine']=r.json()['engine'] #get engine
+        vin_info['year']=r.json()['year'] #get year
+        vin_list.append(vin_info) #append to list
+
+api_df=pd.DataFrame(vin_list) #create dataframe for api vin info
+api_df
+    

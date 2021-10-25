@@ -1,0 +1,7 @@
+select a.vin as 'vin',
+count( distinct e.operation_name) as 'total_operations'
+sum(e.total_price) as 'total cost'
+from assets as a inner JOIN
+estimate line items-operations as e on e.dim_asset_id=a.dim_asset_id
+where e.sold_staus='sold'
+group by a.vin
